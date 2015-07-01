@@ -1,0 +1,5 @@
+
+config supernode
+	option ipv6fw '0'
+	option statistics '0'
+

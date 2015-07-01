@@ -1,0 +1,5 @@
+local config = 'supernode'
+return {
+	ipv6fw = uci:get_first(config, config, "ipv6fw", true),
+	statistics = uci:get_first(config, config, "statistics", false),
+}
