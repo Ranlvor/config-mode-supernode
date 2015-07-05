@@ -1,0 +1,23 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "IPv6 firewall"
+msgstr ""
+
+msgid "Supernode"
+msgstr ""
+
+msgid ""
+"The supernodes can block IPv6-traffic destinating to your router to protect "
+"it from attacks originating from to internet. This option does not affect "
+"clients connected to your router."
+msgstr ""
+
+msgid ""
+"The supernodes can collect varois statistics and performance-data about your "
+"router like CPU-Utilisation, Bandwidth-usage or the number of connected "
+"clients."
+msgstr ""
+
+msgid "statistics collection"
+msgstr ""

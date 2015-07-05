@@ -11,7 +11,7 @@ s = f:section(SimpleSection, nil, translate(
 	 .. 'connected to your router.'
 ))
 
-o = s:option(Flag, "ipv6fw", translate("Enable IPv6 firewall"))
+o = s:option(Flag, "ipv6fw", translate("IPv6 firewall"))
 o.default = uci:get_first(config, config, "ipv6fw", true) and o.enabled or o.disabled
 o.rmempty = false
 
@@ -20,7 +20,7 @@ s = f:section(SimpleSection, nil, translate(
 	 .. 'like CPU-Utilisation, Bandwidth-usage or the number of connected clients.'
 ))
 
-o = s:option(Flag, "statistics", translate("Enable statistics collection"))
+o = s:option(Flag, "statistics", translate("statistics collection"))
 o.default = uci:get_first(config, config, "statistics", false) and o.enabled or o.disabled
 o.rmempty = false
 
