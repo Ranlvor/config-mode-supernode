@@ -6,7 +6,7 @@ f = SimpleForm("supernode", translate("Supernode"))
 f.template = "admin/expertmode"
 
 s = f:section(SimpleSection, nil, translate(
-	'The supernodes can block IPv6-traffic destinating to your router to protect it '
+	'The supernodes can block IPv6-traffic coming towards your router, to protect it '
 	 .. 'from attacks originating from to internet. This option does not affect clients '
 	 .. 'connected to your router.'
 ))
@@ -16,8 +16,8 @@ o.default = uci:get_first(config, config, "ipv6fw", true) and o.enabled or o.dis
 o.rmempty = false
 
 s = f:section(SimpleSection, nil, translate(
-	'The supernodes can collect varois statistics and performance-data about your router '
-	 .. 'like CPU-Utilisation, Bandwidth-usage or the number of connected clients.'
+	'The supernodes can collect various statistics and performance data about your router, '
+	 .. 'like CPU-Utilisation, Bandwidth-usage, or the number of connected clients.'
 ))
 
 o = s:option(Flag, "statistics", translate("statistics collection"))
