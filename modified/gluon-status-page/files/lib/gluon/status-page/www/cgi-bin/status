@@ -1,0 +1,139 @@
+#!/usr/bin/lua
+
+local util = require("luci.util")
+local fs = require("luci.fs")
+local ltn12 = require 'luci.ltn12'
+local sys = require("luci.sys")
+local json = require("luci.json")
+local nixio = require 'nixio'
+local platform_info = require("platform_info")
+
+local hostname = sys.hostname()
+local model = platform_info.get_model()
+local release = util.trim(fs.readfile("/lib/gluon/release") or "")
+
+function escape_html(s)
+  return (s:gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;'):gsub('"', '&quot;'))
+end
+
+io.write("Content-type: text/html\n\n")
+io.write("<!DOCTYPE html>\n")
+io.write("<html>")
+io.write("<head>")
+
+io.write("<title>" .. escape_html(hostname) .. "</title>")
+io.write("<style>body { background: rgba(0, 0, 0, 0.12); font-family: Roboto, Lucida Grande, sans, Arial; color: rgba(0, 0, 0, 0.87); font-size: 14px;}a { color: rgba(220, 0, 103, 0.87); text-decoration: none;}a:hover { text-decoration: underline;}header { display: flex; padding: 0 14px; background: #DCB400; color: rgba(255, 255, 255, 0.98); position: absolute; top: 0; width: 100%; box-sizing: border-box; height: 20vh; z-index: -1; box-shadow: 0px 5px 6px rgba(0, 0, 0, 0.16), 0px 1.5px 3px rgba(0, 0, 0, 0.23); white-space: nowrap;}header h1, header .icons { font-size: 24px; margin: 10px 0; padding: 6px 0;}header h1 { text-overflow: ellipsis; overflow: hidden; flex: 1;}header h1:hover { text-decoration: underline; cursor: pointer;}h1 { font-weight: bold;}h2, h3 { font-size: 16px; color: rgba(0, 0, 0, 0.54);}h2 { padding: 16px 16px;}h3 { padding: 16px 16px 8px;}.container { max-width: 90vw; margin: 64px auto 24px auto; background: rgb(253, 253, 253); box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.19), 0px 3px 6px rgba(0, 0, 0, 0.23);}.container .frame { box-sizing: border-box;}.vertical-split { display: flex;}.vertical-split > .frame { flex: 1; border-style: solid; border-color: rgba(0, 0, 0, 0.12); border-width: 0 0 0 1px;}table { margin: 0 16px;}th { font-weight: bold; color: rgba(0, 0, 0, 0.87); text-align: left; padding: 4px 16px 4px 0;}td { font-weight: normal; color: rgba(0, 0, 0, 0.54);}@media only screen and (max-width: 1250px) { .container {max-width: none;margin: 56px 0 0; } header {height: 56px;z-index: 1;position: fixed; }}@media only screen and (max-width: 960px) { .vertical-split {display: block; }}</style>")
+io.write("</head>")
+io.write("<body>")
+
+io.write("<header><h1>Statusseite: ")
+io.write("" .. escape_html(hostname) .. "</h1></header>")
+io.write("<div class=\"container\">")
+io.write("<div class=\"vertical-split\">")
+io.write("<div class=\"frame\">")
+io.write("<h2>Allgemeines</h2><div><table>")
+io.write("<tr><th>Modell: </th><td>" .. escape_html(model) .. "</td></tr>\n")
+io.write("<tr><th>Firmware Version: </th><td>" .. escape_html(release) .. "</td></tr>\n\n")
+io.write(string.format("<tr><th>Laufzeit:</th><td>%.2f Stunden</td></tr>\n", tonumber(fs.readfile('/proc/uptime'):match('^([^ ]+) '))/3600))
+io.write(string.format("<tr><th>CPU Auslastung:</th><td>%.0f%%</td></tr>\n", tonumber(fs.readfile('/proc/loadavg'):match('^[^ ]+[ ]+([^ ]+)'))*100))
+io.write(string.format("<tr><th>RAM Auslastung:</th><td>%.0f%%</td></tr>\n", escape_html(sys.exec("free -m| grep  Mem | awk '{ print int(($3-$6)/$2*100) }'"))))
+io.write(string.format("<tr><th>MAC Adresse</th><td>%s</td></tr>\n", require('gluon.sysconfig').primary_mac))
+io.write(string.format("<tr><th>IPv6 Adresse</th><td>%s</td></tr>\n", escape_html(sys.exec([[ip addr show dev br-client | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | grep 2001:bf7]]))))
+io.write("</table>")
+io.write("</div></div>\n")
+
+local stat, fastd_status = pcall(
+  function()
+    local fastd_sock = nixio.socket('unix', 'stream')
+    assert(fastd_sock:connect('/var/run/fastd.mesh_vpn.socket'))
+
+    decoder = json.Decoder()
+    ltn12.pump.all(ltn12.source.file(fastd_sock), decoder:sink())
+    return decoder:get()
+  end
+)
+
+
+io.write("<div class=\"frame\">")
+io.write("<h2>VPN</h2>")
+io.write("<div><table>")
+
+if stat then
+  io.write(string.format("<tr><th>fastd Laufzeit </th><td>%.2f Stunden</td></tr>\n", fastd_status.uptime/1000/3600))
+
+  local peers = 0
+  local connections = 0
+
+  for key, peer in pairs(fastd_status.peers) do
+    peers = peers+1
+
+    if peer.connection then
+      connections = connections+1
+    end
+  end
+
+  io.write(string.format("<tr><th>Mesh-VPN</th><td>%i Server konfiguriert</td></tr><tr><th>verbunden:</th><td>%i Server</dt></tr>\n\n", peers, connections))
+
+  for key, peer in pairs(fastd_status.peers) do
+    io.write(string.format("<tr><th>&nbsp; &nbsp; &nbsp; %s</th><td> ", string.gsub(escape_html(peer.name), "mesh_vpn_backbone_peer_", "")))
+
+    if peer.connection then
+      io.write(string.format("verbunden(%.2f Stunden)</td></tr>", peer.connection.established/1000/3600))
+    else
+      io.write("Nicht verbunden</td></tr>\n")
+    end
+  end
+  io.write(string.format("<tr><th>Traffic</th><td>%s</td></tr>\n", escape_html(sys.exec("ifconfig br-wan | grep \"RX by\""))))
+  io.write(string.format("<tr><th>Verschl&uuml;sselung:</dh><td>%s</td></tr>\n", escape_html(sys.exec("uci get fastd.mesh_vpn.method"))))
+else
+  io.write("fastd not running")
+end
+io.write("</table></div></div>")
+
+io.write("<div class=\"frame\"><h2>Weiteres</h2><div>")
+io.write("<table><tr><th>Ansprechpartner:</th><td>" .. escape_html(sys.exec("uci get gluon-node-info.@owner[0].contact")) .. "</td></tr></table>")
+io.write("<a target=\"_blank\" href=\"http://map.services.fftr/nodes/" .. string.gsub(require('gluon.sysconfig').primary_mac, ":", "") .. ".png\"><img src=\"http://map.services.fftr/nodes/" .. string.gsub(require('gluon.sysconfig').primary_mac, ":", "") .. ".png\" alt=\":-/\" width=\"100%\"></a>")
+io.write("</div></div></div></div>")
+
+io.write("<div class=\"container\"><div class=\"vertical-split\">")
+local interfaces = util.split(util.trim(util.exec("iw dev | grep IBSS -B 5 | grep Interface | cut -d' ' -f2")))
+for _, ifname in ipairs(interfaces) do
+  io.write("<div class=\"frame\"><h2>Nachbarknoten::" .. escape_html(ifname) .. "</h2>")
+  io.write("<div>")
+
+  io.write("<b>" .. escape_html(sys.exec("iw dev " .. ifname .. " link")) .. "</b></br>\n")
+
+  for _, line in ipairs(util.split(util.exec("iw dev " .. ifname .. " station dump"))) do
+    local mac = line:match("^Station (.*) %(on ")
+    if mac then
+      io.write("Station " .. mac .. " (on " .. escape_html(ifname) .. ")</br>\n")
+    else
+      io.write(escape_html(line) .. "</br>\n")
+    end
+  end
+
+  io.write("</div></div>")
+end
+io.write("</div></div>")
+
+
+io.write("<div class=\"container\"><div class=\"vertical-split\">")
+local interfaces = util.split(util.trim(util.exec("iw dev | grep AP -B 5 | grep Interface | cut -d' ' -f2")))
+for _, ifname in ipairs(interfaces) do
+  io.write("<div class=\"frame\"><h2>WLAN-Clients::" .. escape_html(ifname) .. "</h2>")
+  io.write("<div>")
+
+  for _, line in ipairs(util.split(util.exec("iw dev " .. ifname .. " station dump"))) do
+    local mac = line:match("^Station (.*) %(on ")
+    if mac then
+      io.write("</br>Station " .. mac .. " (on " .. escape_html(ifname) .. ")</br>\n")
+    else
+      io.write(escape_html(line) .. "</br>\n")
+    end
+  end
+
+  io.write("</div></div>")
+end
+io.write("</div></div>")
+io.write("</body>")
+io.write("</html>")
