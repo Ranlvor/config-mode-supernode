@@ -74,7 +74,7 @@ if stat then
     end
   end
 
-  io.write(string.format("<tr><th>Mesh-VPN</th><td>%i Server konfiguriert</td></tr><tr><th>verbunden:</th><td>%i Server</dt></tr>\n\n", peers, connections))
+  io.write(string.format("<tr><th>Mesh-VPN</th><td>%i Server konfiguriert</td></tr><tr><th>verbunden:</th><td>%i Server</td></tr>\n\n", peers, connections))
 
   for key, peer in pairs(fastd_status.peers) do
     io.write(string.format("<tr><th>&nbsp; &nbsp; &nbsp; %s</th><td> ", string.gsub(escape_html(peer.name), "mesh_vpn_backbone_peer_", "")))
@@ -103,14 +103,14 @@ for _, ifname in ipairs(interfaces) do
   io.write("<div class=\"frame\"><h2>Nachbarknoten::" .. escape_html(ifname) .. "</h2>")
   io.write("<div>")
 
-  io.write("<b>" .. escape_html(sys.exec("iw dev " .. ifname .. " link")) .. "</b></br>\n")
+  io.write("<b>" .. escape_html(sys.exec("iw dev " .. ifname .. " link")) .. "</b><br>\n")
 
   for _, line in ipairs(util.split(util.exec("iw dev " .. ifname .. " station dump"))) do
     local mac = line:match("^Station (.*) %(on ")
     if mac then
-      io.write("Station " .. mac .. " (on " .. escape_html(ifname) .. ")</br>\n")
+      io.write("Station " .. mac .. " (on " .. escape_html(ifname) .. ")<br>\n")
     else
-      io.write(escape_html(line) .. "</br>\n")
+      io.write(escape_html(line) .. "<br>\n")
     end
   end
 
@@ -128,9 +128,9 @@ for _, ifname in ipairs(interfaces) do
   for _, line in ipairs(util.split(util.exec("iw dev " .. ifname .. " station dump"))) do
     local mac = line:match("^Station (.*) %(on ")
     if mac then
-      io.write("</br>Station " .. mac .. " (on " .. escape_html(ifname) .. ")</br>\n")
+      io.write("<br>Station " .. mac .. " (on " .. escape_html(ifname) .. ")<br>\n")
     else
-      io.write(escape_html(line) .. "</br>\n")
+      io.write(escape_html(line) .. "<br>\n")
     end
   end
 
